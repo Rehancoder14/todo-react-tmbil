@@ -42,7 +42,7 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-green-100 flex items-center justify-center">
       <form onSubmit={handleLogin} className="bg-white p-8 rounded shadow-md w-full max-w-sm">
-        <h2 className="text-2xl font-bold text-green-700 mb-6">Login</h2>
+        <h2 className="text-2xl font-bold text-green-700 mb-6">Login/Signup</h2>
         {error && <p className="text-red-500 mb-4">{error}</p>}
         <input
           type="email"
