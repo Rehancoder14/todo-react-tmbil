@@ -8,6 +8,7 @@ import {
 } from 'react-router-dom';
 import './index.css';
 
+// ✅ Login Component
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,30 +21,30 @@ const Login = () => {
     setError('');
     setIsLoading(true);
     try {
-      const response = await fetch('https://tmbill-backend-8tfv.onrender.com/api/login', {
+      const res = await fetch('https://tmbill-backend-8tfv.onrender.com/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const data = await response.json();
-      if (response.ok) {
+      const data = await res.json();
+      if (res.ok) {
         localStorage.setItem('token', data.token);
         navigate('/home');
       } else {
         setError(data.message || 'Login failed');
       }
     } catch (err) {
-      console.log(err);
+      console.error('Login failed:', err);
       setError('Something went wrong');
     }
     setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-green-100 flex items-center justify-center">
-      <form onSubmit={handleLogin} className="bg-white p-8 rounded shadow-md w-full max-w-sm">
-        <h2 className="text-2xl font-bold text-green-700 mb-6">Login/Signup</h2>
-        {error && <p className="text-red-500 mb-4">{error}</p>}
+    <div className="min-h-screen bg-green-100 flex items-center justify-center px-4">
+      <form onSubmit={handleLogin} className="bg-white p-6 sm:p-8 rounded shadow-md w-full max-w-sm">
+        <h2 className="text-2xl font-bold text-green-700 mb-6 text-center">Login</h2>
+        {error && <p className="text-red-500 mb-4 text-sm">{error}</p>}
         <input
           type="email"
           placeholder="Email"
@@ -68,41 +69,41 @@ const Login = () => {
           {isLoading ? 'Logging in...' : 'Login'}
         </button>
         <p className="text-xs text-red-500 mt-2 text-center">
-          Note: Backend is hosted on a free tier, so it might take 50+ seconds to respond.
+          Note: Backend may take ~50s to wake up.
         </p>
       </form>
     </div>
   );
 };
 
+// ✅ Home Component
 const Home = () => {
   const [todos, setTodos] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [title, setTitle] = useState('');
-  const [description, setDesc] = useState('');
+  const [description, setDescription] = useState('');
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const fetchTodos = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const res = await fetch('https://tmbill-backend-8tfv.onrender.com/api/tasks', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (res.ok) {
-        setTodos(data['data']);
+        setTodos(data.data || []);
       } else {
         setTodos([]);
       }
     } catch (err) {
-      console.error('Failed to fetch tasks:', err);
+      console.error('Error:', err);
+      setTodos([]);
     }
     setLoading(false);
   };
@@ -111,15 +112,19 @@ const Home = () => {
     fetchTodos();
   }, []);
 
-  const addOrUpdateTodo = async () => {
-    if (!title || !description) return;
-    setIsSaving(true);
+  const handleAddOrUpdate = async () => {
     const token = localStorage.getItem('token');
-    const url = editId
+    const payload = {
+      title,
+      description,
+      ...(isEditing ? { is_completed: isCompleted } : {}),
+    };
+
+    const method = isEditing ? 'PUT' : 'POST';
+    const url = isEditing
       ? `https://tmbill-backend-8tfv.onrender.com/api/tasks/${editId}`
       : 'https://tmbill-backend-8tfv.onrender.com/api/tasks';
-    const method = editId ? 'PUT' : 'POST';
-    const body = editId ? { title, description, is_completed: isCompleted } : { title, description };
+
     try {
       const res = await fetch(url, {
         method,
@@ -127,23 +132,32 @@ const Home = () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       });
+
       if (res.ok) {
-        await fetchTodos();
         setTitle('');
-        setDesc('');
+        setDescription('');
         setIsCompleted(false);
-        setEditId(null);
+        setIsEditing(false);
         setShowDialog(false);
+        await fetchTodos();
       }
     } catch (err) {
-      console.error('Failed to save task:', err);
+      console.error('Failed to submit task:', err);
     }
-    setIsSaving(false);
   };
 
-  const deleteTodo = async (id) => {
+  const handleEdit = (todo) => {
+    setTitle(todo.title);
+    setDescription(todo.description);
+    setIsCompleted(todo.is_completed || false);
+    setEditId(todo.id);
+    setIsEditing(true);
+    setShowDialog(true);
+  };
+
+  const handleDelete = async (id) => {
     const token = localStorage.getItem('token');
     try {
       const res = await fetch(`https://tmbill-backend-8tfv.onrender.com/api/tasks/${id}`, {
@@ -152,32 +166,32 @@ const Home = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-      if (res.ok) fetchTodos();
+      if (res.ok) {
+        await fetchTodos();
+      }
     } catch (err) {
-      console.error('Failed to delete task:', err);
+      console.error('Delete failed:', err);
     }
   };
 
-  const handleEdit = (todo) => {
-    setTitle(todo.title);
-    setDesc(todo.description);
-    setIsCompleted(todo.is_completed);
-    setEditId(todo.id);
-    setShowDialog(true);
-  };
-
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/');
-  };
+  localStorage.removeItem('token');
+  window.location.href = '/'; // ✅ hard reload to avoid render bugs
+};
 
   return (
-    <div className="min-h-screen bg-green-50 p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-3xl font-bold text-green-700">Welcome</h1>
+    <div className="min-h-screen bg-green-50 px-4 py-6 sm:px-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between items-center mb-6 gap-4">
+        <h1 className="text-2xl font-bold text-green-700">Welcome!</h1>
         <div className="flex gap-2">
           <button
-            onClick={() => setShowDialog(true)}
+            onClick={() => {
+              setTitle('');
+              setDescription('');
+              setIsCompleted(false);
+              setIsEditing(false);
+              setShowDialog(true);
+            }}
             className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
           >
             Add
@@ -192,48 +206,44 @@ const Home = () => {
       </div>
 
       {loading ? (
-        <div className="text-green-700 animate-pulse">Loading todos...</div>
+        <p className="text-green-600 text-center animate-pulse">Loading todos...</p>
       ) : todos.length === 0 ? (
-        <div className="text-red-500">No todo found</div>
+        <p className="text-center text-red-500">No todos found</p>
       ) : (
-        todos.map((todo, index) => (
-          <div
-            key={index}
-            className="bg-white p-4 mb-3 shadow rounded border-l-4 border-green-600"
-          >
-            <h3 className="text-lg font-semibold text-green-800">{todo.title}</h3>
-            <p className="text-gray-600 mb-2">{todo.description}</p>
-            <p className="text-sm text-gray-500 mb-2">Completed: {todo.is_completed ? 'Yes' : 'No'}</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleEdit(todo)}
-                className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => deleteTodo(todo.id)}
-                className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-              >
-                Delete
-              </button>
+        <div className="space-y-4">
+          {todos.map((todo) => (
+            <div
+              key={todo.id}
+              className="bg-white p-4 shadow rounded border-l-4 border-green-600"
+            >
+              <h3 className="text-lg font-semibold text-green-800">{todo.title}</h3>
+              <p className="text-gray-600">{todo.description}</p>
+              <p className="text-xs text-gray-500 mt-1">Completed: {todo.is_completed ? '✅' : '❌'}</p>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => handleEdit(todo)}
+                  className="text-sm bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(todo.id)}
+                  className="text-sm bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
 
       {showDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center px-4 z-50">
           <div className="bg-white p-6 rounded shadow w-full max-w-sm">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-green-700">{editId ? 'Update Todo' : 'Add Todo'}</h2>
-              <button onClick={() => {
-                setShowDialog(false);
-                setEditId(null);
-                setTitle('');
-                setDesc('');
-                setIsCompleted(false);
-              }} className="text-gray-500 hover:text-gray-800">&times;</button>
+              <h2 className="text-xl font-bold text-green-700">{isEditing ? 'Update Todo' : 'Add Todo'}</h2>
+              <button onClick={() => setShowDialog(false)} className="text-gray-500 hover:text-gray-800">&times;</button>
             </div>
             <input
               type="text"
@@ -241,35 +251,29 @@ const Home = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full p-2 mb-4 border border-gray-300 rounded"
-              required
             />
             <input
               type="text"
               placeholder="Description"
               value={description}
-              onChange={(e) => setDesc(e.target.value)}
+              onChange={(e) => setDescription(e.target.value)}
               className="w-full p-2 mb-4 border border-gray-300 rounded"
-              required
             />
-            {editId && (
-              <div className="mb-4">
-                <label className="block mb-1 text-gray-700 font-medium">Is Completed</label>
-                <select
-                  value={isCompleted}
-                  onChange={(e) => setIsCompleted(e.target.value === 'true')}
-                  className="w-full p-2 border border-gray-300 rounded"
-                >
-                  <option value="false">False</option>
-                  <option value="true">True</option>
-                </select>
-              </div>
+            {isEditing && (
+              <select
+                className="w-full p-2 mb-4 border border-gray-300 rounded"
+                value={isCompleted}
+                onChange={(e) => setIsCompleted(e.target.value === 'true')}
+              >
+                <option value="false">Not Completed</option>
+                <option value="true">Completed</option>
+              </select>
             )}
             <button
-              onClick={addOrUpdateTodo}
+              onClick={handleAddOrUpdate}
               className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full"
-              disabled={isSaving}
             >
-              {isSaving ? 'Saving...' : 'Submit'}
+              {isEditing ? 'Update' : 'Submit'}
             </button>
           </div>
         </div>
@@ -278,36 +282,49 @@ const Home = () => {
   );
 };
 
+// ✅ Protected Route Wrapper
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   return token ? children : <Navigate to="/" />;
 };
 
+// ✅ App Wrapper with Token Check
+
 const AppWrapper = () => {
   const [loading, setLoading] = useState(true);
-  const [hasToken, setHasToken] = useState(false);
+  const [token, setToken] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    setHasToken(!!token);
+    const storedToken = localStorage.getItem('token');
+    setToken(storedToken);
     setLoading(false);
-  }, []);
+  }, []); // ✅ Only run once
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-green-700 font-bold text-xl animate-pulse">Loading...</div>
+      <div className="h-screen flex justify-center items-center text-green-600 text-xl font-bold animate-pulse">
+        Loading...
       </div>
     );
+  }
 
   return (
     <Router>
       <Routes>
-        <Route path="/" element={!hasToken ? <Login /> : <Navigate to="/home" />} />
-        <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+        <Route path="/" element={token ? <Navigate to="/home" /> : <Login />} />
+        <Route
+          path="/home"
+          element={
+            <ProtectedRoute>
+              <Home />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   );
 };
 
 export default AppWrapper;
+
+
