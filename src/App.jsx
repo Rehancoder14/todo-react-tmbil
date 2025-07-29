@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  BrowserRouter as Router,
+  HashRouter as Router, // ✅ Fix for 404 on refresh
   Routes,
   Route,
   useNavigate,
@@ -86,7 +86,6 @@ const Home = () => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
-  // const navigate = useNavigate();
 
   const fetchTodos = async () => {
     setLoading(true);
@@ -175,9 +174,9 @@ const Home = () => {
   };
 
   const handleLogout = () => {
-  localStorage.removeItem('token');
-  window.location.href = '/'; // ✅ hard reload to avoid render bugs
-};
+    localStorage.removeItem('token');
+    window.location.href = '/'; // ✅ hard reload to root
+  };
 
   return (
     <div className="min-h-screen bg-green-50 px-4 py-6 sm:px-6">
@@ -218,7 +217,9 @@ const Home = () => {
             >
               <h3 className="text-lg font-semibold text-green-800">{todo.title}</h3>
               <p className="text-gray-600">{todo.description}</p>
-              <p className="text-xs text-gray-500 mt-1">Completed: {todo.is_completed ? '✅' : '❌'}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Completed: {todo.is_completed ? '✅' : '❌'}
+              </p>
               <div className="flex gap-2 mt-3">
                 <button
                   onClick={() => handleEdit(todo)}
@@ -242,8 +243,12 @@ const Home = () => {
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center px-4 z-50">
           <div className="bg-white p-6 rounded shadow w-full max-w-sm">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-green-700">{isEditing ? 'Update Todo' : 'Add Todo'}</h2>
-              <button onClick={() => setShowDialog(false)} className="text-gray-500 hover:text-gray-800">&times;</button>
+              <h2 className="text-xl font-bold text-green-700">
+                {isEditing ? 'Update Todo' : 'Add Todo'}
+              </h2>
+              <button onClick={() => setShowDialog(false)} className="text-gray-500 hover:text-gray-800">
+                &times;
+              </button>
             </div>
             <input
               type="text"
@@ -282,14 +287,13 @@ const Home = () => {
   );
 };
 
-// ✅ Protected Route Wrapper
+// ✅ Protected Route
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   return token ? children : <Navigate to="/" />;
 };
 
-// ✅ App Wrapper with Token Check
-
+// ✅ App Wrapper
 const AppWrapper = () => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(null);
@@ -298,7 +302,7 @@ const AppWrapper = () => {
     const storedToken = localStorage.getItem('token');
     setToken(storedToken);
     setLoading(false);
-  }, []); // ✅ Only run once
+  }, []);
 
   if (loading) {
     return (
@@ -326,5 +330,3 @@ const AppWrapper = () => {
 };
 
 export default AppWrapper;
-
-
