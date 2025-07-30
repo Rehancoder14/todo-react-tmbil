@@ -15,30 +15,32 @@ const Login = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setError('');
+  setIsLoading(true);
+  try {
+    const res = await fetch('https://tmbill-backend-8tfv.onrender.com/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
-    try {
-      const res = await fetch('https://tmbill-backend-8tfv.onrender.com/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        localStorage.setItem('token', data.token);
-        navigate('/home');
-      } else {
-        setError(data.message || 'Login failed');
-      }
-    } catch (err) {
-      console.error('Login failed:', err);
-      setError('Something went wrong');
+    const data = await res.json();
+
+    if (res.ok && data.token) {
+      localStorage.setItem('token', data.token);
+      navigate('/home');
+    } else {
+      // Show custom message if token is missing even when res.ok
+      setError(data.message || 'Invalid credentials');
     }
-    setIsLoading(false);
-  };
+  } catch (err) {
+    console.error('Login failed:', err);
+    setError('Something went wrong. Please try again.');
+  }
+  setIsLoading(false);
+};
 
   return (
     <div className="min-h-screen bg-green-100 flex items-center justify-center px-4">
